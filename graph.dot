@@ -1,0 +1,9 @@
+digraph ComputationGraph {
+  node0 [label="add(2,3)"];
+  node1 [label="multiply(4,5)"];
+  node0 -> node1;
+  node2 [label="subtract(10,7)"];
+  node1 -> node2;
+  node3 [label="divide(8,2)"];
+  node2 -> node3;
+}

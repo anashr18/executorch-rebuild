@@ -3,6 +3,7 @@ class SimpleBackend:
         from backends.backend_details import BackendDetails
 
         self.details = BackendDetails("SimpleBackend", "0.1")
+        self.registry = {"add": self.add, "multiply": self.multiply}
 
     def add(self, a, b):
         return a + b
@@ -10,6 +11,8 @@ class SimpleBackend:
     def multiply(self, a, b):
         return a * b
 
-    def compile(self, ops):
-        # For now, just return a string showing the ops to be compiled
-        return f"Compiled ops: {ops}"
+    def register_op(self, name, func):
+        self.registry[name] = func
+
+    def get_op(self, name):
+        return self.registry.get(name)
