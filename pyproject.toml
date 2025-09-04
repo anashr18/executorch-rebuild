@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "executorch"
+version = "0.0.0"
+description = "Lightweight FX tracing helpers"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Your Name" }]
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["executorch*"]
+exclude = ["tests*"]
+

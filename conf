@@ -1,0 +1,11 @@
+the goal is not just to make a minimal runnable version, but to __replicate `exir` faithfully__, quirks and all, so we can understand its design decisions and internal mechanics. That means we’ll follow their structure, APIs, and even some of the “oddities” (like custom error handling, memory planning quirks, and control flow decorators).
+
+Here’s how we can approach this:
+
+---
+
+### 1. Replication Philosophy
+
+- __Not a rewrite__: We won’t simplify or abstract away their quirks.
+- __Exact replication__: We’ll mirror their module structure (`common.py`, `control_flow.py`, `delegate.py`, etc.).
+- __Runnable in open-source__: Since some parts reference Meta’s internal infra (Buck, fbsource paths), we’ll adapt those to standard Python packaging but keep the same API surface.
