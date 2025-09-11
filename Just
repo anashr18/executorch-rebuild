@@ -1,0 +1,7 @@
+•	Explored how XNNPack executes key ops on edge devices and identified basic trade-offs.
+
+Continuous Learning
+	•	Picked up fundamentals of XNNPack delegate flow and quantization for mobile inference.
+
+Innovation
+	•	Suggested simple ideas for benchmarking and operator optimization on edge hardware.
