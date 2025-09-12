@@ -9,3 +9,25 @@ cp /path/to/step01_linear_relu.py scratch/xnn_export_tutorial/
 git add scratch/xnn_export_tutorial/step01_linear_relu.py
 git commit -m "Add step01 linear relu demo"
 git push origin featuregen01
+
+
+sudo apt update
+sudo apt install -y build-essential curl git \
+    libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
+    libsqlite3-dev wget llvm libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev python3-openssl
+
+git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+
+git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
+
+# Pyenv setup
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+
+# Init pyenv + virtualenv
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+
