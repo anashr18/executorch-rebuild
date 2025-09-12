@@ -1,1 +1,11 @@
+git clone https://github.com/anashr18/executorch-rebuild.git
+cd executorch-rebuild
+git checkout -b featuregen01
 
+# copy the file into the repo, e.g.:
+mkdir -p scratch/xnn_export_tutorial
+cp /path/to/step01_linear_relu.py scratch/xnn_export_tutorial/
+
+git add scratch/xnn_export_tutorial/step01_linear_relu.py
+git commit -m "Add step01 linear relu demo"
+git push origin featuregen01
