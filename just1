@@ -1,0 +1,204 @@
+import json
+import random
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
+
+TensorData = Union[float, List[float], List[List[float]]]
+
+@dataclass
+class Tensor:
+    name: str
+    data: Optional[TensorData] = None
+
+@dataclass
+class Node:
+    op: str
+    inputs: List[str]
+    outputs: List[str]
+    params: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class Graph:
+    inputs: List[str]
+    outputs: List[str]
+    nodes: List[Node] = field(default_factory=list)
+    constants: Dict[str, Tensor] = field(default_factory=dict)
+
+    def add_constant(self, name: str, value: TensorData):
+        if name in self.constants:
+            raise ValueError(f"Constant {name} already exists")
+        self.constants[name] = Tensor(name=name, data=value)
+
+    def add_node(self, op: str, inputs: List[str], outputs: List[str],
+                 params: Optional[Dict[str, Any]] = None):
+        self.nodes.append(Node(op=op, inputs=inputs, outputs=outputs,
+                               params=params or {}))
+
+# ---------------- interpreter ----------------
+def run_graph(graph: Graph, feeds: Dict[str, TensorData]) -> Dict[str, TensorData]:
+    env: Dict[str, TensorData] = {}
+    for name in graph.inputs:
+        if name not in feeds:
+            raise ValueError(f"Missing feed for input '{name}'")
+        env[name] = as_2d(feeds[name])
+    for name, tensor in graph.constants.items():
+        env[name] = tensor.data  # type: ignore
+    for node in graph.nodes:
+        if node.op == "Linear":
+            x, w, b = (env[n] for n in node.inputs)
+            y = add_bias(matmul_2d(x, w), b)
+            env[node.outputs[0]] = y
+        elif node.op == "Relu":
+            x = env[node.inputs[0]]
+            env[node.outputs[0]] = relu(x)
+        else:
+            raise NotImplementedError(f"Unsupported op: {node.op}")
+    return {name: env[name] for name in graph.outputs}
+
+# ---------------- lowering ----------------
+def lower_to_xnn(graph: Graph) -> Dict[str, Any]:
+    xnn_nodes: List[Dict[str, Any]] = []
+    constants_json: Dict[str, Dict[str, Any]] = {}
+    for name, tensor in graph.constants.items():
+        shape = shape_of(tensor.data)  # type: ignore
+        constants_json[name] = {"dtype": "float32", "shape": shape, "data": tensor.data}
+    for node in graph.nodes:
+        if node.op == "Linear":
+            xnn_nodes.append({
+                "type": "FullyConnected",
+                "inputs": node.inputs,
+                "outputs": node.outputs,
+                "params": {"transpose_weights": False, "activation": None},
+            })
+        elif node.op == "Relu":
+            xnn_nodes.append({
+                "type": "Relu",
+                "inputs": node.inputs,
+                "outputs": node.outputs,
+                "params": {},
+            })
+        else:
+            raise NotImplementedError(f"Lowering for op {node.op} not implemented")
+    return {
+        "format": "xnn-demo-v1",
+        "inputs": graph.inputs,
+        "outputs": graph.outputs,
+        "constants": constants_json,
+        "nodes": xnn_nodes,
+    }
+
+# ---------------- runtime ----------------
+def run_xnn_json(model_json: Dict[str, Any], feeds: Dict[str, TensorData]) -> Dict[str, TensorData]:
+    env: Dict[str, TensorData] = {}
+    for name in model_json["inputs"]:
+        env[name] = as_2d(feeds[name])
+    for name, c in model_json.get("constants", {}).items():
+        env[name] = c["data"]
+    for node in model_json["nodes"]:
+        if node["type"] == "FullyConnected":
+            x, w, b = (env[n] for n in node["inputs"])
+            y = add_bias(matmul_2d(x, w), b)
+            env[node["outputs"][0]] = y
+        elif node["type"] == "Relu":
+            x = env[node["inputs"][0]]
+            env[node["outputs"][0]] = relu(x)
+        else:
+            raise NotImplementedError(f"Unsupported node type: {node['type']}")
+    return {name: env[name] for name in model_json["outputs"]}
+
+# ---------------- demo ----------------
+def build_linear_relu_demo(seed: int = 0):
+    rnd = RandomLike(seed)
+    N, K, M = 2, 4, 3
+    x_name, w_name, b_name = "x", "w", "b"
+    g = Graph(inputs=[x_name], outputs=["y2"])
+    w = [[rnd.normal() for _ in range(M)] for _ in range(K)]
+    b = [rnd.normal() for _ in range(M)]
+    g.add_constant(w_name, w)
+    g.add_constant(b_name, b)
+    g.add_node("Linear", [x_name, w_name, b_name], ["y1"])
+    g.add_node("Relu", ["y1"], ["y2"])
+    x = [[rnd.normal() for _ in range(K)] for _ in range(N)]
+    return g, {x_name: x}
+
+def main():
+    graph, feeds = build_linear_relu_demo()
+    ref_out = run_graph(graph, feeds)
+    model_json = lower_to_xnn(graph)
+    json_str = json.dumps(model_json, indent=2)
+    xnn_out = run_xnn_json(model_json, feeds)
+    y_ref = ref_out[graph.outputs[0]]
+    y_xnn = xnn_out[graph.outputs[0]]
+    mad = max_abs_difference_2d(y_ref, y_xnn)
+    print("High-level (reference) output:\n", format_2d(y_ref))
+    print("\nXNN-style runtime output:\n", format_2d(y_xnn))
+    print(f"\nMax abs diff: {mad:.6f}")
+    print("\nExported model JSON (truncated to first 400 chars):\n",
+          json_str[:400] + ("..." if len(json_str) > 400 else ""))
+
+# -------------- utilities --------------
+def as_2d(x: TensorData) -> List[List[float]]:
+    if isinstance(x, (int, float)):
+        return [[float(x)]]
+    if not x:
+        return []
+    if isinstance(x[0], list):
+        return [[float(v) for v in row] for row in x]  # type: ignore[index]
+    return [[float(v) for v in x]]  # type: ignore[return-value]
+
+def shape_of(x: TensorData) -> List[int]:
+    if isinstance(x, (int, float)):
+        return []
+    if not isinstance(x, list):
+        return []
+    if not x:
+        return [0]
+    if isinstance(x[0], list):
+        return [len(x), len(x[0])]  # type: ignore[arg-type]
+    return [len(x)]
+
+def matmul_2d(a: List[List[float]], b: List[List[float]]) -> List[List[float]]:
+    n = len(a)
+    k = len(a[0]) if n > 0 else 0
+    if k != len(b):
+        raise ValueError("Shape mismatch for matmul")
+    m = len(b[0]) if b else 0
+    out = [[0.0 for _ in range(m)] for _ in range(n)]
+    for i in range(n):
+        for j in range(m):
+            s = 0.0
+            for t in range(k):
+                s += a[i][t] * b[t][j]
+            out[i][j] = s
+    return out
+
+def add_bias(y: List[List[float]], b: List[float]) -> List[List[float]]:
+    n = len(y)
+    m = len(y[0]) if n > 0 else 0
+    if len(b) != m:
+        raise ValueError("Bias shape mismatch")
+    return [[y[i][j] + b[j] for j in range(m)] for i in range(n)]
+
+def relu(x: List[List[float]]) -> List[List[float]]:
+    return [[max(v, 0.0) for v in row] for row in x]
+
+def max_abs_difference_2d(a: List[List[float]], b: List[List[float]]) -> float:
+    n = len(a)
+    m = len(a[0]) if n > 0 else 0
+    mad = 0.0
+    for i in range(n):
+        for j in range(m):
+            mad = max(mad, abs(a[i][j] - b[i][j]))
+    return mad
+
+def format_2d(x: List[List[float]]) -> str:
+    return "\n".join(["[ " + ", ".join(f\"{v:.6f}\" for v in row) + " ]" for row in x])
+
+class RandomLike:
+    def __init__(self, seed: int = 0):
+        self.rng = random.Random(seed)
+    def normal(self, mu: float = 0.0, sigma: float = 1.0) -> float:
+        return float(self.rng.gauss(mu, sigma))
+
+if __name__ == "__main__":
+    main()
