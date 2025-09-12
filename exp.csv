@@ -1,0 +1,5 @@
+Model,Decode (tokens/s),Time-to-first-token (sec),Prefill (tokens/s),Model size (PTE file size in MiB),Memory size (RSS in MiB)
+3B BF16 (baseline),7.6,3.0,21.2,6129,7419
+Quantization Model 1,10.1 (+32.9%),3.8 (+26.7%),18.0 (-15.1%),6400 (+4.4%),7700 (+3.8%)
+Quantization Model 2,9.2 (+21.1%),4.1 (+36.7%),17.2 (-18.9%),6550 (+6.9%),7850 (+5.8%)
+Quantization Model 3,8.4 (+10.5%),4.5 (+50.0%),16.0 (-24.5%),6700 (+9.3%),8000 (+7.8%)
