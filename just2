@@ -1,0 +1,388 @@
+your_project_root/
+├── CMakeLists.txt
+├── CMakePresets.json
+├── examples/
+│   └── header_sanity/
+│       └── main.cpp
+└── include/
+    └── executorch/
+        └── runtime/
+            ├── core/
+            │   ├── event_tracer.h
+            │   └── memory_allocator.h
+            └── platform/
+                └── compiler.1. include/executorch/runtime/platform/compiler.h
+
+1. include/executorch/runtime/platform/compiler.h
+
+This header centralizes compiler attributes, namespace quirks, and Meta’s torch::executor alias so downstream code can simply include #pragma once
+
+#include <cstddef>  // @manual
+
+// Determine which namespace the runtime should live in.
+#if !defined(ET_RUNTIME_NAMESPACE)
+#  if defined(USE_ATEN_LIB)
+#    define ET_RUNTIME_NAMESPACE torch
+#  else
+#    define ET_RUNTIME_NAMESPACE executorch
+#  endif
+#endif
+
+// Create the namespace (even if empty for now) so that the alias resolves.
+namespace ET_RUNTIME_NAMESPACE {}
+
+// Mirror Meta's torch::executor alias.
+#ifndef TORCH_EXECUTOR_NAMESPACE_DEFINED
+#define TORCH_EXECUTOR_NAMESPACE_DEFINED
+namespace torch {
+namespace executor = ::ET_RUNTIME_NAMESPACE;
+} // namespace torch
+#endif
+
+// Attribute helpers.
+#if defined(_MSC_VER)
+#  define ET_ALWAYS_INLINE __forceinline
+#  define ET_NOINLINE __declspec(noinline)
+#  define ET_NODISCARD [[nodiscard]]
+#  define ET_UNUSED(x) (void)(x)
+#  define ET_LIKELY(x) (x)
+#  define ET_UNLIKELY(x) (x)
+#else
+#  define ET_ALWAYS_INLINE inline __attribute__((__always_inline__))
+#  define ET_NOINLINE __attribute__((noinline))
+#  define ET_NODISCARD [[nodiscard]]
+#  define ET_UNUSED(x) (void)(x)
+#  define ET_LIKELY(x) (__builtin_expect(!!(x), 1))
+#  define ET_UNLIKELY(x) (__builtin_expect(!!(x), 0))
+#endif
+
+// Simple RAII/utility helpers to reduce boilerplate.
+#define ET_DISALLOW_COPY_AND_ASSIGN(TypeName) \
+  TypeName(const TypeName&) = delete;         \
+  TypeName& operator=(const TypeName&) = delete
+
+#define ET_DISALLOW_MOVE_AND_ASSIGN(TypeName) \
+  TypeName(TypeName&&) = delete;              \
+  TypeName& operator=(TypeName&&) = delete
+
+
+
+key bits
+	•	USE_ATEN_LIB automatically flips the runtime namespace between executorch and torch, while keeping the torch::executor alias.
+	•	Basic attribute macros (ET_ALWAYS_INLINE, ET_LIKELY, etc.) keep future headers consistent.
+	•	ET_DISALLOW_* macros make it painless to forbid copies/moves in singletons later.
+
+⸻
+
+2. include/executorch/runtime/core/event_tracer.h
+
+Defines a lightweight tracing interface, a no-op implementation, and an RAII #pragma once
+
+#include "executorch/runtime/platform/compiler.h"  // @manual
+
+namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
+namespace core {
+
+class EventTracer {
+ public:
+  virtual ~EventTracer() = default;
+  virtual void push_event(const char* name) = 0;
+  virtual void pop_event() = 0;
+};
+
+class NoopEventTracer final : public EventTracer {
+ public:
+  NoopEventTracer() = default;
+  ~NoopEventTracer() override = default;
+
+  void push_event(const char* /*name*/) override {}
+  void pop_event() override {}
+};
+
+class ScopedEventTrace {
+ public:
+  ScopedEventTrace(EventTracer* tracer, const char* name) : tracer_(nullptr) {
+    reset(tracer, name);
+  }
+
+  ScopedEventTrace(EventTracer& tracer, const char* name)
+      : ScopedEventTrace(&tracer, name) {}
+
+  ~ScopedEventTrace() {
+    release();
+  }
+
+  void reset(EventTracer* tracer, const char* name) {
+    release();
+    tracer_ = tracer;
+    if (tracer_ && name) {
+      tracer_->push_event(name);
+    }
+  }
+
+  void release() {
+    if (tracer_) {
+      tracer_->pop_event();
+      tracer_ = nullptr;
+    }
+  }
+
+ private:
+  ET_DISALLOW_COPY_AND_ASSIGN(ScopedEventTrace);
+  ET_DISALLOW_MOVE_AND_ASSIGN(ScopedEventTrace);
+
+  EventTracer* tracer_;
+};
+
+} // namespace core
+} // namespace runtime
+} // namespace ET_RUNTIME_NAMESPACE
+
+
+
+Notes:
+	•	ScopedEventTrace tolerates a nullptr tracer so callers can pass whatever they have without branching.
+	•	reset/release let you reuse the same RAII guard if you want to wrap multiple regions.
+
+
+3. include/executorch/runtime/core/memory_allocator.h
+
+Allocator interface plus a simple malloc-backed singleton honoring Meta’s kDefaultAlignment.
+
+#pragma once
+
+#include <cstddef>  // @manual
+#include <cstdlib>  // @manual
+#include <new>      // @manual
+
+#if defined(_MSC_VER)
+#include <malloc.h>  // @manual
+#endif
+
+#include "executorch/runtime/platform/compiler.h"  // @manual
+
+namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
+namespace core {
+
+class MemoryAllocator {
+ public:
+  static constexpr std::size_t kDefaultAlignment = 64;
+
+  virtual ~MemoryAllocator() = default;
+
+  ET_NODISCARD
+  virtual void* allocate(std::size_t bytes,
+                         std::size_t alignment = kDefaultAlignment) = 0;
+
+  virtual void deallocate(void* ptr, std::size_t bytes) = 0;
+};
+
+class DefaultMemoryAllocator final : public MemoryAllocator {
+ public:
+  DefaultMemoryAllocator() = default;
+  ~DefaultMemoryAllocator() override = default;
+
+  ET_NODISCARD
+  void* allocate(std::size_t bytes,
+                 std::size_t alignment = kDefaultAlignment) override {
+    if (bytes == 0) {
+      return nullptr;
+    }
+
+    const std::size_t effective_alignment = normalize_alignment(alignment);
+
+#if defined(_MSC_VER)
+    void* ptr = _aligned_malloc(bytes, effective_alignment);
+    if (!ptr) {
+      throw std::bad_alloc();
+    }
+    return ptr;
+#else
+    void* ptr = nullptr;
+    const int err = ::posix_memalign(&ptr, effective_alignment, bytes);
+    if (err != 0) {
+      throw std::bad_alloc();
+    }
+    return ptr;
+#endif
+  }
+
+  void deallocate(void* ptr, std::size_t /*bytes*/) override {
+    if (!ptr) {
+      return;
+    }
+#if defined(_MSC_VER)
+    _aligned_free(ptr);
+#else
+    std::free(ptr);
+#endif
+  }
+
+  static DefaultMemoryAllocator& instance() {
+    static DefaultMemoryAllocator allocator;
+    return allocator;
+  }
+
+ private:
+  ET_DISALLOW_COPY_AND_ASSIGN(DefaultMemoryAllocator);
+  ET_DISALLOW_MOVE_AND_ASSIGN(DefaultMemoryAllocator);
+
+  static std::size_t normalize_alignment(std::size_t alignment) {
+    std::size_t effective =
+        alignment == 0 ? kDefaultAlignment : alignment;
+
+    if (effective < kDefaultAlignment) {
+      effective = kDefaultAlignment;
+    }
+
+#if !defined(_MSC_VER)
+    if (effective < sizeof(void*)) {
+      effective = sizeof(void*);
+    }
+#endif
+
+    if ((effective & (effective - 1)) != 0) {
+      std::size_t power_of_two = 1;
+      while (power_of_two < effective) {
+        power_of_two <<= 1;
+      }
+      effective = power_of_two;
+    }
+
+    return effective;
+  }
+};
+
+} // namespace core
+} // namespace runtime
+} // namespace ET_RUNTIME_NAMESPACE
+
+
+Highlights:
+	•	kDefaultAlignment stays at 64 bytes by default, matching the Meta quirk.
+	•	normalize_alignment bumps caller-provided alignments up to a power of two and respects platform minima.
+	•	A singleton allocator is enough for bootstrapping; we can swap it out later when we add arena or pooling strategies.
+
+4. examples/header_sanity/main.cpp
+
+Tiny demo that exercises the headers and the allocator.
+
+#include "executorch/runtime/platform/compiler.h"  // @manual
+#include "executorch/runtime/core/event_tracer.h"  // @manual
+#include "executorch/runtime/core/memory_allocator.h"  // @manual
+
+#include <cstdio>  // @manual
+
+int main() {
+  using namespace torch::executor;
+
+  runtime::core::NoopEventTracer tracer;
+  runtime::core::ScopedEventTrace scope(tracer, "phase1.header_sanity");
+
+  auto& allocator = runtime::core::DefaultMemoryAllocator::instance();
+  void* buffer = allocator.allocate(256);
+  if (!buffer) {
+    std::fprintf(stderr, "Allocation failed\n");
+    return 1;
+  }
+
+  std::fprintf(stdout, "Allocated 256 bytes at %p\n", buffer);
+  allocator.deallocate(buffer, 256);
+  return 0;
+}
+
+
+5. CMakeLists.txt
+
+Minimal project definition plus a header-only interface target so everything downstream reuses the include path and optional USE_ATEN_LIB switch.
+
+
+cmake_minimum_required(VERSION 3.20)
+
+project(executorch-runtime LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+add_library(executorch_headers INTERFACE)
+target_include_directories(
+  executorch_headers
+  INTERFACE
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_compile_features(executorch_headers INTERFACE cxx_std_17)
+
+option(USE_ATEN_LIB "Use torch namespace for the runtime" OFF)
+if (USE_ATEN_LIB)
+  target_compile_definitions(executorch_headers INTERFACE USE_ATEN_LIB=1)
+endif()
+
+add_executable(et_header_sanity examples/header_sanity/main.cpp)
+target_link_libraries(et_header_sanity PRIVATE executorch_headers)
+
+if (MSVC)
+  target_compile_options(et_header_sanity PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(et_header_sanity PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+
+6. CMakePresets.json
+
+Preset to keep build trees predictable (out/build/default) and ready for Ninja.
+
+
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default (Ninja, RelWithDebInfo)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    }
+  ]
+}
+
+Build & run locally
+
+From the repo root:
+	1.	Configure: cmake --preset default
+	2.	Build: cmake --build --preset default
+	3.	Run the demo: ./out/build/default/bin/et_header_sanity
+
+You should see a short allocation message, confirming the headers compile, link, and behave.
+
+⸻
+
+Summary
+	•	Delivered Phase 1 skeleton headers for compiler configuration, event tracing, and the default allocator, plus a header-sanity example and minimal CMake setup so you can bootstrap the build locally.
+
+Testing
+	•	⚠️ No automated tests were run (instructions-only response).
+
+
+
+
+
+
+
