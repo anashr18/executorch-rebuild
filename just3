@@ -1,0 +1,140 @@
+#pragma once
+// 1) Namespace switch -> stable alias torch::executor
+#if defined(USE_TORCH_NS)
+  #define RUNTIME_NS torchns
+#else
+  #define RUNTIME_NS exens
+#endif
+namespace RUNTIME_NS {}
+namespace torch { namespace executor = ::RUNTIME_NS; }
+
+// 2) Attribute helpers
+#if defined(_MSC_VER)
+  #define ALWAYS_INLINE __forceinline
+  #define NOINLINE __declspec(noinline)
+  #define NODISCARD [[nodiscard]]
+  #define UNUSED(x) (void)(x)
+#else
+  #define ALWAYS_INLINE inline __attribute__((__always_inline__))
+  #define NOINLINE __attribute__((noinline))
+  #define NODISCARD [[nodiscard]]
+  #define UNUSED(x) (void)(x)
+#endif
+
+
+
+
+#pragma once
+#if defined(_MSC_VER)
+  #define LIKELY(x)   (x)
+  #define UNLIKELY(x) (x)
+#else
+  #define LIKELY(x)   (__builtin_expect(!!(x), 1))
+  #define UNLIKELY(x) (__builtin_expect(!!(x), 0))
+#endif
+
+
+
+
+#pragma once
+#define DISALLOW_COPY_AND_ASSIGN(T) \
+  T(const T&) = delete;             \
+  T& operator=(const T&) = delete
+
+#define DISALLOW_MOVE_AND_ASSIGN(T) \
+  T(T&&) = delete;                  \
+  T& operator=(T&&) = delete
+
+
+#include <iostream>
+#include "compiler_glue.h"
+
+namespace exens   { void hello(){ std::cout<<"Hello from exens\n"; } }
+namespace torchns { void hello(){ std::cout<<"Hello from torchns\n"; } }
+
+
+
+
+int main() {
+  using namespace torch::executor; // fixed spelling for callers
+  hello();                         // resolves per build flag
+}
+
+
+
+
+#include <iostream>
+#include <vector>
+#include "compiler_glue.h"
+#include "branch_hints.h"
+
+ALWAYS_INLINE int add_fast(int a,int b){ return a+b; }
+NOINLINE int slow_path(int x){ return x*2+1; }
+NODISCARD int compute(){ return 42; }
+
+int classify_hint(int x){
+  if (LIKELY(x>=0)) return 1;
+  return slow_path(x); // rare branch
+}
+
+int main(){
+  std::cout << "add_fast: " << add_fast(3,4) << "\n";
+
+  std::vector<int> v{5,7,-1,9};
+  int pos=0; for(int x: v) if(classify_hint(x)==1) pos++;
+  std::cout << "positives: " << pos << "\n";
+
+  compute(); // expect nodiscard warning with -Wall -Wextra
+  int debug_only = 123; UNUSED(debug_only);
+}
+
+
+
+
+
+#include "disallow.h"
+
+struct Resource {
+  Resource() = default;
+  ~Resource() = default;
+private:
+  DISALLOW_COPY_AND_ASSIGN(Resource);
+  DISALLOW_MOVE_AND_ASSIGN(Resource);
+};
+
+int main(){
+  Resource r;
+  // Resource r2 = r;             // copy: compile error if uncommented
+  // Resource r3 = std::move(r);  // move: compile error if uncommented
+}
+
+
+
+cmake_minimum_required(VERSION 3.20)
+project(toy_compiler_glue LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_library(glue INTERFACE)
+target_include_directories(glue INTERFACE ${PROJECT_SOURCE_DIR}/include)
+
+# Toggle real namespace used by torch::executor alias
+option(USE_TORCH_NS "Map torch::executor to torchns instead of exens" OFF)
+if (USE_TORCH_NS)
+  target_compile_definitions(glue INTERFACE USE_TORCH_NS=1)
+endif()
+
+# demo 1: namespace aliasing
+add_executable(demo_namespace src/demo_namespace.cpp)
+target_link_libraries(demo_namespace PRIVATE glue)
+target_compile_options(demo_namespace PRIVATE -Wall -Wextra -Wpedantic)
+
+# demo 2: attributes + hints
+add_executable(demo_attrs src/demo_attrs.cpp)
+target_link_libraries(demo_attrs PRIVATE glue)
+target_compile_options(demo_attrs PRIVATE -Wall -Wextra -Wpedantic)
+
+# demo 3: disallow copy/move
+add_executable(demo_disallow src/demo_disallow.cpp)
+target_link_libraries(demo_disallow PRIVATE glue)
+target_compile_options(demo_disallow PRIVATE -Wall -Wextra -Wpedantic)
