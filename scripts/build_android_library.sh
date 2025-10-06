@@ -37,6 +37,7 @@ build_android_native_library() {
   cmake . -DCMAKE_INSTALL_PREFIX="${CMAKE_OUT}" \
     -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK}/build/cmake/android.toolchain.cmake" \
     --preset "android-${ANDROID_ABI}" \
+    -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
     -DANDROID_PLATFORM=android-26 \
     -DEXECUTORCH_ENABLE_EVENT_TRACER="${EXECUTORCH_ANDROID_PROFILING:-OFF}" \
     -DEXECUTORCH_BUILD_EXTENSION_LLM="${EXECUTORCH_BUILD_EXTENSION_LLM:-ON}" \
@@ -86,7 +87,8 @@ build_aar() {
   # Use java unit test as sanity check
   ANDROID_HOME="${ANDROID_SDK:-/opt/android/sdk}" ./gradlew :executorch_android:testDebugUnitTest
   popd
-  if [ ! -z $BUILD_AAR_DIR ]; then
+  if [ ! -z "$BUILD_AAR_DIR" ]; then
+    mkdir -p "${BUILD_AAR_DIR}"
     cp extension/android/executorch_android/build/outputs/aar/executorch_android-debug.aar "${BUILD_AAR_DIR}/executorch.aar"
   fi
 }
