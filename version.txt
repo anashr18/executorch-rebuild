@@ -1,1 +1,6 @@
 1.1.0a0
+Covered ops: RMSNorm; attention (Q/K/V projection, SDPA, RoPE, KV-cache); MLP (matmul → bias → GELU/SwiGLU); residual/add; concat/split; reshape/view/permute.
+
+State: export graphs load and lower to target backend on toy + representative models.
+
+Next: deep-dive to understand, debug, and compare each op path—numerics vs PyTorch, kernel selection, and performance counters—then document gaps and fixes
