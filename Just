@@ -1,23 +1,9 @@
+# Replace the key ID below with yours from the error (example shown)
+KEY=3B4FE6ACC0B21F32
 
-KEY=3B4FE6ACC0B21F32          # ← replace with your actual key ID
-sudo mkdir -p /etc/apt/keyrings
-
-gpg --keyserver keyserver.ubuntu.com --recv-keys $KEY
-gpg --export $KEY | sudo tee /etc/apt/keyrings/ubuntu-archive-keyring.gpg > /dev/null
-
-
-sudo rm -f /etc/apt/trusted.gpg.d/kitware.gpg
-sudo rm -f /etc/apt/keyrings/kitware-archive-keyring.gpg
-
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | \
-  gpg --dearmor -o /etc/apt/keyrings/kitware-archive-keyring.gpg
-
-
-echo "deb [signed-by=/etc/apt/keyrings/kitware-archive-keyring.gpg] \
-https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" | \
-sudo tee /etc/apt/sources.list.d/kitware.list > /dev/null
-
+# Download directly from Ubuntu keyserver over HTTPS instead of keyserver port
+curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$KEY" | \
+gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/$KEY.gpg > /dev/null
 
 sudo apt update
-sudo apt install -y cmake
+
