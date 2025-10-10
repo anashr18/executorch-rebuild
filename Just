@@ -1,4 +1,11 @@
 
+KEY=3B4FE6ACC0B21F32          # ← replace with your actual key ID
+sudo mkdir -p /etc/apt/keyrings
+
+gpg --keyserver keyserver.ubuntu.com --recv-keys $KEY
+gpg --export $KEY | sudo tee /etc/apt/keyrings/ubuntu-archive-keyring.gpg > /dev/null
+
+
 sudo rm -f /etc/apt/trusted.gpg.d/kitware.gpg
 sudo rm -f /etc/apt/keyrings/kitware-archive-keyring.gpg
 
