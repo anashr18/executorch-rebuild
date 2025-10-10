@@ -1,10 +1,9 @@
 
 
-sudo apt-get update
-sudo apt-get install -y \
-  build-essential clang lld \
-  flatbuffers-compiler zstd \
-  make curl git pkg-config \
-  libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-  libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
-  libffi-dev liblzma-dev
+sudo apt update
+sudo apt install -y software-properties-common apt-transport-https ca-certificates gnupg
+
+# Add Kitware GPG key and repository
+sudo mkdir -p /etc/apt/keyrings
+sudo wget -O /etc/apt/keyrings/kitware-archive-keyring.gpg https://apt.kitware.com/keys/kitware-archive-latest.asc
+sudo apt-add-repository "deb [signed-by=/etc/apt/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
