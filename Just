@@ -7,3 +7,18 @@ sudo apt install -y software-properties-common apt-transport-https ca-certificat
 sudo mkdir -p /etc/apt/keyrings
 sudo wget -O /etc/apt/keyrings/kitware-archive-keyring.gpg https://apt.kitware.com/keys/kitware-archive-latest.asc
 sudo apt-add-repository "deb [signed-by=/etc/apt/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
+
+
+# Make sure gnupg and curl are there
+sudo apt update
+sudo apt install -y curl gnupg ca-certificates lsb-release
+
+# Add the key
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | \
+    gpg --dearmor -o /etc/apt/keyrings/kitware-archive-keyring.gpg
+
+# Add the repo manually using tee
+echo "deb [signed-by=/etc/apt/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" | \
+    sudo tee /etc/apt/sources.list.d/kitware.list > /dev/null
+
