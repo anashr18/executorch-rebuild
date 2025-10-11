@@ -1,0 +1,4 @@
+/home/yug/workspace3/exet/executorch/cmake-out/CMakeFiles/executorch_runtime.dir
+/home/yug/workspace3/exet/executorch/cmake-out/CMakeFiles/executor_runner.dir
+/home/yug/workspace3/exet/executorch/cmake-out/CMakeFiles/edit_cache.dir
+/home/yug/workspace3/exet/executorch/cmake-out/CMakeFiles/rebuild_cache.dir

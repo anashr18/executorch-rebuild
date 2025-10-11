@@ -1,0 +1,26 @@
+[
+{
+  "directory": "/home/yug/workspace3/exet/executorch/cmake-out",
+  "command": "/usr/bin/c++ -I/home/yug/workspace3/exet/executorch -std=gnu++17 -fPIC -o CMakeFiles/executorch_runtime.dir/runtime/core/json.cpp.o -c /home/yug/workspace3/exet/executorch/runtime/core/json.cpp",
+  "file": "/home/yug/workspace3/exet/executorch/runtime/core/json.cpp",
+  "output": "CMakeFiles/executorch_runtime.dir/runtime/core/json.cpp.o"
+},
+{
+  "directory": "/home/yug/workspace3/exet/executorch/cmake-out",
+  "command": "/usr/bin/c++ -I/home/yug/workspace3/exet/executorch -std=gnu++17 -fPIC -o CMakeFiles/executorch_runtime.dir/runtime/executor/program.cpp.o -c /home/yug/workspace3/exet/executorch/runtime/executor/program.cpp",
+  "file": "/home/yug/workspace3/exet/executorch/runtime/executor/program.cpp",
+  "output": "CMakeFiles/executorch_runtime.dir/runtime/executor/program.cpp.o"
+},
+{
+  "directory": "/home/yug/workspace3/exet/executorch/cmake-out",
+  "command": "/usr/bin/c++ -I/home/yug/workspace3/exet/executorch -std=gnu++17 -fPIC -o CMakeFiles/executorch_runtime.dir/runtime/executor/executor.cpp.o -c /home/yug/workspace3/exet/executorch/runtime/executor/executor.cpp",
+  "file": "/home/yug/workspace3/exet/executorch/runtime/executor/executor.cpp",
+  "output": "CMakeFiles/executorch_runtime.dir/runtime/executor/executor.cpp.o"
+},
+{
+  "directory": "/home/yug/workspace3/exet/executorch/cmake-out",
+  "command": "/usr/bin/c++ -I/home/yug/workspace3/exet/executorch -std=gnu++17 -fPIE -o CMakeFiles/executor_runner.dir/examples/executor_runner/main.cpp.o -c /home/yug/workspace3/exet/executorch/examples/executor_runner/main.cpp",
+  "file": "/home/yug/workspace3/exet/executorch/examples/executor_runner/main.cpp",
+  "output": "CMakeFiles/executor_runner.dir/examples/executor_runner/main.cpp.o"
+}
+]
