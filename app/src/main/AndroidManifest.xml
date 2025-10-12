@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.xnndemo">
+    <application
+        android:label="XnnDemo"
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.XnnDemo">
+        <activity android:name="com.example.xnndemo.MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
