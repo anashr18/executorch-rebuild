@@ -1,22 +1,37 @@
-# replace this with the FIRST path you saw in your find output
-SHADER_DIR="/abs/path/to/executorch/backends/vulkan/runtime/graph/ops/glsl"
+# adjust these paths to your build/model
+RUNNER=out/android-arm64/bin/vulkan_executor_runner
+MODEL=/path/to/your/model.pte
 
-# does the key shader exist here (or nearby)?
-test -f "$SHADER_DIR/graph_ops.glsl" || find "$SHADER_DIR" -maxdepth 2 -name "graph_ops.glsl" -print
-
-# list a few shaders to be sure
-find "$SHADER_DIR" -maxdepth 1 -name "*.glsl" | head
-
+# (optional) shrink the runner a bit if you want
+# $ANDROID_NDK must be set
+"$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" "$RUNNER" 2>/dev/null || true
 
 
-rm -rf out/android-arm64
-cmake -S . -B out/android-arm64 -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
-  -DANDROID_ABI=arm64-v8a \
-  -DANDROID_PLATFORM=android-24 \
-  -DEXECUTORCH_BUILD_VULKAN=ON \
-  -DGLSLC_EXECUTABLE="$(which glslc)" \
-  -DVULKAN_COMPUTE_SHADERS_DIR="$SHADER_DIR" \
-  -DEXECUTORCH_VULKAN_SHADER_DIR="$SHADER_DIR" \
-  -DET_VK_SHADER_DIR="$SHADER_DIR" \
-  -DCMAKE_BUILD_TYPE=Release
+adb shell 'rm -rf /data/local/tmp/et_vk && mkdir -p /data/local/tmp/et_vk'
+adb push "$RUNNER" /data/local/tmp/et_vk/
+adb push "$MODEL"  /data/local/tmp/et_vk/model.pte
+
+# if you have *.so later (dynamic build), uncomment:
+# adb push out/android-arm64/lib /data/local/tmp/et_vk/lib
+# adb push "$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" /data/local/tmp/et_vk/lib/
+
+
+
+
+adb shell 'cd /data/local/tmp/et_vk && chmod +x vulkan_executor_runner && ./vulkan_executor_runner --model model.pte'
+
+
+
+adb shell 'cd /data/local/tmp/et_vk && ./vulkan_executor_runner --help' || true
+
+
+python3 - <<'PY'
+import numpy as np
+# adjust shape/dtype to your model
+a = np.ones((1,3,224,224), dtype=np.float32)
+a.tofile("input.bin")
+PY
+
+adb push input.bin /data/local/tmp/et_vk/
+adb shell 'cd /data/local/tmp/et_vk && ./vulkan_executor_runner --model model.pte --input input.bin'
+
