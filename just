@@ -1,26 +1,29 @@
-rm -rf out/host
-CC=$(command -v clang) CXX=$(command -v clang++) \
-cmake -S . -B out/host -G Ninja \
-  -DET_BUILD_TOOLS=ON \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_STANDARD=17 \
-  -DCMAKE_AR=$(command -v llvm-ar || echo /usr/bin/ar) \
-  -DCMAKE_RANLIB=$(command -v llvm-ranlib || echo /usr/bin/ranlib) \
-  -DCMAKE_NM=$(command -v llvm-nm || echo /usr/bin/nm)
-cmake --build out/host -j
+export ANDROID_NDK=/abs/path/android-ndk-r27b
+export ANDROID_ABI=arm64-v8a
 
+HOST_GEN="$PWD/out/host/tools/bindgen/binding_gen_host"         # adjust if your tool name/path differs
 
-grep -E 'CMAKE_(C|CXX)_COMPILER[:=]|CMAKE_(AR|RANLIB|NM)[:=]' out/host/CMakeCache.txt
-# Expect clang/clang++ for COMPILER; llvm-ar/ranlib/nm (or GNU ar/ranlib/nm) for the rest
-
-
-
-# Remove stale cache entries
-sed -i '/CMAKE_\(C\|CXX\)_COMPILER_AR/d;/CMAKE_\(C\|CXX\)_COMPILER_RANLIB/d;/CMAKE_\(AR\|RANLIB\|NM\)/d' out/host/CMakeCache.txt
-# Or simply rm -rf out/host and re-run the cmake command above.
+rm -rf out/android-arm64
+cmake -S . -B out/android-arm64 -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI="$ANDROID_ABI" \
+  -DANDROID_PLATFORM=android-24 \
+  -DEXECUTORCH_BUILD_VULKAN=ON \
+  -DBINDING_GEN_EXE="$HOST_GEN" \
+  -DPython3_EXECUTABLE="$(command -v python3)" \
+  -DPYTHON_EXECUTABLE="$(command -v python3)" \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build out/android-arm64 -j"$(nproc)" --target install
 
 
 
 
 
+# confirm the flag actually took:
+grep -E 'EXECUTORCH_BUILD_VULKAN.*=ON' out/android-arm64/CMakeCache.txt
 
+# list targets; you should see vulkan ones (e.g., vulkan_executor_runner)
+cmake --build out/android-arm64 --target help | grep -i vulkan
+
+# find built vulkan bits
+find out/android-arm64 -iname '*vulkan*'
