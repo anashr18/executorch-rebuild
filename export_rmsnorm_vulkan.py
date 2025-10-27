@@ -10,7 +10,7 @@ class Add(torch.nn.Module):
 
 aten = export(Add(), (torch.ones(1), torch.ones(1)))
 edge = to_edge(aten)
-edge = edge.to_backend(VulkanPartitioner())      # <-- Vulkan lowering
+# edge = edge.to_backend(VulkanPartitioner())      # <-- Vulkan lowering
 et_prog = edge.to_executorch()
 
 with open("model_vk.pte", "wb") as f:

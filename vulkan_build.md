@@ -27,3 +27,16 @@ cmake . \
     
 # cmake buid and install
 cmake --build cmake-android-out -j64 --target install
+
+
+
+
+ ./gradlew clean
+./gradlew assembleDebug
+./gradlew installDebug
+
+
+#include <executorch/runtime/executor/memory_manager.h>
+
+#include <executorch/runtime/core/portable_type/tensor.h>
+#include <executorch/runtime/core/portable_type/scalar_type.h>
