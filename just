@@ -1,40 +1,15 @@
-python3 - <<'PY'
-import numpy as np
-a = np.array([[1, 2],[3, 4]], dtype=np.int8)
-b = np.array([[10,20],[30,40]], dtype=np.int8)
-a.tofile("input0.bin")
-b.tofile("input1.bin")
-print("sizes:", len(a.tobytes()), len(b.tobytes()))
-PY
+Goal 1: End-to-End On-Device AI Runtime Pipeline Development
 
-adb push input0.bin /data/local/tmp/et_vk/
-adb push input1.bin /data/local/tmp/et_vk/
+Description:
+Develop an end-to-end framework for deploying PyTorch-trained models on edge devices. This includes model export to an intermediate representation (IR), graph optimizations, serialization, and execution through a lightweight C++ runtime supporting multiple backends such as CPU, GPU (Vulkan), and DSP (QNN).
 
-adb shell 'cd /data/local/tmp/et_vk && ./vulkan_executor_runner --model model.pte --inputs input0.bin,input1.bin'
+Self-Appraisal / Progress:
+Implemented the model export and runtime pipeline from PyTorch to C++ runtime, including IR conversion, serialization, and execution. Began integrating the Vulkan backend, which required building the full C++ runtime from source — a process that initially caused several build and dependency issues, but these were successfully resolved. Currently validating individual operations to ensure stable execution on Vulkan.
 
+Goal 2: Backend Exploration and Performance Optimization
 
+Description:
+Explore and benchmark multiple hardware backends (Vulkan GPU, QNN, MediaTek, and open-source runtimes) to evaluate performance, memory efficiency, and deployment feasibility for edge AI workloads.
 
-# regenerate (float32), 4 elements => 16 bytes each
-python3 - <<'PY'
-import numpy as np
-a = np.array([[1, 2],[3, 4]], dtype=np.float32)
-b = np.array([[10,20],[30,40]], dtype=np.float32)
-a.tofile("input0.bin")
-b.tofile("input1.bin")
-print("sizes:", len(a.tobytes()), len(b.tobytes()))
-PY
-
-adb push input0.bin /data/local/tmp/et_vk/
-adb push input1.bin /data/local/tmp/et_vk/
-
-# pass dtype if your runner supports it (pick one that --help shows)
-adb shell 'cd /data/local/tmp/et_vk && ./vulkan_executor_runner --model model.pte --inputs input0.bin,input1.bin --input_dtype fp32'
-# or
-adb shell 'cd /data/local/tmp/et_vk && ./vulkan_executor_runner --model model.pte --inputs input0.bin,input1.bin --dtype float32'
-
-
-python3 - <<'PY'
-import os
-print("input0.bin bytes:", os.path.getsize("input0.bin"))
-print("input1.bin bytes:", os.path.getsize("input1.bin"))
-PY
+Self-Appraisal / Progress:
+Benchmarked and analyzed various backend options for executing deep learning workloads on-device. Identified key performance bottlenecks, began initial Vulkan integration, and established groundwork for future support of additional backends like QNN.
