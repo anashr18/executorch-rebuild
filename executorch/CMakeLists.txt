@@ -7,8 +7,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_library(executorch_runtime STATIC
     runtime/core/json.cpp
+    runtime/core/tensor.cpp
     runtime/executor/program.cpp
     runtime/executor/executor.cpp
+    runtime/kernel/registry.cpp
+    kernels/cpu/register.cpp
 )
 
 target_include_directories(executorch_runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

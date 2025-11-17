@@ -13,7 +13,7 @@ from .utils import (
     move_mapping_to_device,
     move_sequence_to_device,
 )
-
+from .graph_builder import build_execution_graph
 
 @dataclass
 class CapturedProgram:
@@ -35,6 +35,7 @@ class CapturedProgram:
             "inputs": serialize_outputs(self.inputs),
             "kwargs": {k: serialize_outputs(v) for k, v in self.kwargs.items()},
             "outputs": serialize_outputs(self.outputs),
+            "graph": build_execution_graph((self.module))
         }
         metadata = {"capture_device": self.device}
         return EdgeProgram(

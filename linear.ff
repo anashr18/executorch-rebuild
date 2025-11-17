@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "edge_version": "0.0.1",
+    "format": "executorch.json"
+  },
+  "payload": {
+    "execution": {
+      "graph": {
+        "inputs": [
+          "x"
+        ],
+        "instructions": [
+          {
+            "attributes": {
+              "numeric": {},
+              "string": {
+                "bias": "linear.bias",
+                "weight": "linear.weight"
+              }
+            },
+            "inputs": [
+              "x"
+            ],
+            "name": "linear",
+            "op": "aten::linear",
+            "outputs": [
+              "linear"
+            ]
+          }
+        ],
+        "outputs": [
+          "linear"
+        ]
+      },
+      "inputs": [
+        {
+          "dtype": "torch.float32",
+          "shape": [
+            1,
+            4
+          ],
+          "type": "tensor",
+          "values": [
+            2.8313441276550293,
+            0.2262827306985855,
+            -0.5175501704216003,
+            -1.1925264596939087
+          ]
+        }
+      ],
+      "kwargs": {},
+      "outputs": {
+        "dtype": "torch.float32",
+        "shape": [
+          1,
+          2
+        ],
+        "type": "tensor",
+        "values": [
+          0.7044394612312317,
+          -0.7291945219039917
+        ]
+      }
+    },
+    "metadata": {
+      "capture_device": "cpu"
+    },
+    "module": {
+      "qualified_name": "executorch.examples.models.linear.LinearModel",
+      "state_dict": {
+        "linear.bias": {
+          "dtype": "torch.float32",
+          "shape": [
+            2
+          ],
+          "type": "tensor",
+          "values": [
+            -0.37543946504592896,
+            0.2643299698829651
+          ]
+        },
+        "linear.weight": {
+          "dtype": "torch.float32",
+          "shape": [
+            2,
+            4
+          ],
+          "type": "tensor",
+          "values": [
+            0.23598778247833252,
+            0.21789979934692383,
+            0.007611513137817383,
+            -0.3072037696838379,
+            -0.23022079467773438,
+            -0.441616952419281,
+            -0.006106197834014893,
+            0.2053791880607605
+          ]
+        }
+      }
+    }
+  }
+}

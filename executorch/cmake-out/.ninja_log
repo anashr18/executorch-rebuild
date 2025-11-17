@@ -1,7 +1,0 @@
-# ninja log v6
-0	209	1760151987193133497	CMakeFiles/executor_runner.dir/examples/executor_runner/main.cpp.o	d3ba26afc6eba759
-0	237	1760151987193034115	CMakeFiles/executorch_runtime.dir/runtime/executor/executor.cpp.o	57546a438f1fc608
-0	393	1760151987191668911	CMakeFiles/executorch_runtime.dir/runtime/core/json.cpp.o	179cab225a6eb003
-0	425	1760151987192935783	CMakeFiles/executorch_runtime.dir/runtime/executor/program.cpp.o	6725988ba1a3ac2a
-425	453	1760151987616676573	libexecutorch_runtime.a	967933ff6b2a03ae
-453	484	1760151987644677078	executor_runner	9282f9579ee1ab3

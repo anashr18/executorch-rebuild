@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "runtime/core/json.h"
+#include "runtime/core/tensor.h"
+#include "runtime/executor/graph.h"
 
 namespace executorch::runtime::executor {
 
@@ -13,6 +15,8 @@ struct TensorData {
   std::string dtype;
   std::vector<int64_t> shape;
   std::vector<double> values;
+
+  core::Tensor to_tensor() const;
 };
 
 struct Program {
@@ -22,8 +26,9 @@ struct Program {
   core::JsonValue inputs;
   core::JsonValue kwargs;
   core::JsonValue outputs;
+  ProgramGraph graph;
 
-  static Program load_from_file(const std::string& path);
+  static Program load_from_file(const std::string &path);
 };
 
-}  // namespace executorch::runtime::executor
+} // namespace executorch::runtime::executor
