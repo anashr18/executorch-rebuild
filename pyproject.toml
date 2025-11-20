@@ -23,7 +23,7 @@ authors = [
   {name="PyTorch Team", email="packages@pytorch.org"},
 ]
 license = "BSD-3-Clause"
-license-files = ["LICENSE"]
+# license-files = ["LICENSE"]
 keywords = ["pytorch", "machine learning"]
 # PyPI package information.
 classifiers = [
