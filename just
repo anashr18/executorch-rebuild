@@ -1,12 +1,21 @@
-which python3
-python3 -V
+| Dataset                                       | Doc types                       | Labels you get (what “ground truth” looks like)                                                                                                              | Why it’s good                                                                                                                      | Gotchas                                                                                                                             |
+| --------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **DocILE (ICDAR/CLEF)**                       | Invoices, orders, business docs | Field types + bbox/page + text; plus **line-item recognition** (table row grouping) ([GitHub][1])                                                            | Closest to real enterprise extraction: many field classes + line items; also includes a big synthetic + unlabeled set ([arXiv][2]) | Access is gated (request form); check usage terms (often “research only”) ([DocILE][3])                                             |
+| **SROIE (ICDAR 2019 receipts)**               | Scanned receipts                | Explicit **JSON** per image: `company/address/date/total` ([GitHub][4])                                                                                      | Super clean “DocVLM → JSON” training/eval                                                                                          | Small schema (only 4 fields) + limited domain; ~1000 images split 600/400 ([GitHub][4])                                             |
+| **CORD (receipt parsing)**                    | Receipts (Indonesian)           | Word boxes + text + **semantic labels + hierarchy**; open release is 1,000 samples with defined splits ([GitHub][5])                                         | Great for structured receipt JSON (menu, totals, taxes, etc.)                                                                      | Important nuance: repo describes “over 11k collected”, but the **public downloadable set is 1,000** (legal filtering) ([GitHub][5]) |
+| **XFUND (multilingual forms)**                | Forms in 7 languages            | Human-labeled **key–value pairs** + entity types (header/question/answer/other) and relations ([GitHub][6])                                                  | If Samsung needs multilingual/generalization, this is the most “direct” KV dataset                                                 | More “form” than “invoice”; still not long-doc heavy                                                                                |
+| **FUNSD (forms)**                             | Scanned forms                   | Entities + relations across words (good for “question↔answer” KV linking) ([Guillaume Jaume][7])                                                             | Classic baseline; easy to benchmark against LayoutLM-style models                                                                  | Small: 199 forms ([Guillaume Jaume][7])                                                                                             |
+| **Kleister-NDA (long legal docs)**            | NDAs (PDF)                      | You’re given **keys** and must output **values** (explicitly “not a NER task”) ([GitHub][8])                                                                 | Great if your product needs “doc-level answers” (values may be anywhere across pages)                                              | Not bbox-first; licensing/usage may need extra checking depending on repo terms                                                     |
+| **Kleister-Charity (long financial reports)** | Charity annual reports (PDF)    | Extract charity name/number/address + financial values ([GitHub][9])                                                                                         | Very realistic long-doc extraction                                                                                                 | Much harder than receipts/forms; may need strong retrieval + reasoning                                                              |
+| **WildReceipt (real-world receipts)**         | “In-the-wild” receipt photos    | **Key information categories** with token boxes; designed to stress unseen templates; ~25 categories + ~69k text boxes; common split ~1268/472 ([arXiv][10]) | Best for robustness to camera noise/layout variance                                                                                | Harder OCR noise + label mapping (key/value classes) than SROIE                                                                     |
 
-python3 - << 'EOF'
-import sys
-print("Python exe:", sys.executable)
-try:
-    import executorch
-    print("executorch imported from:", executorch.__file__)
-except ImportError as e:
-    print("ImportError:", e)
-EOF
+[1]: https://github.com/rossumai/docile?utm_source=chatgpt.com "DocILE: Document Information Localization and Extraction ..."
+[2]: https://arxiv.org/abs/2302.05658?utm_source=chatgpt.com "DocILE Benchmark for Document Information Localization and Extraction"
+[3]: https://docile.rossum.ai/ "DocILE: Document Information Localization and Extraction"
+[4]: https://github.com/zzzDavid/ICDAR-2019-SROIE "GitHub - zzzDavid/ICDAR-2019-SROIE: ICDAR 2019 Robust Reading Challenge on Scanned Receipts OCR and Information Extraction"
+[5]: https://github.com/clovaai/cord "GitHub - clovaai/cord: CORD: A Consolidated Receipt Dataset for Post-OCR Parsing"
+[6]: https://github.com/doc-analysis/XFUND "GitHub - doc-analysis/XFUND: XFUND: A Multilingual Form Understanding Benchmark"
+[7]: https://guillaumejaume.github.io/FUNSD/ "FUNSD"
+[8]: https://github.com/applicaai/kleister-nda "GitHub - applicaai/kleister-nda"
+[9]: https://github.com/applicaai/kleister-charity?utm_source=chatgpt.com "applicaai/kleister-charity"
+[10]: https://arxiv.org/abs/2103.14470?utm_source=chatgpt.com "Spatial Dual-Modality Graph Reasoning for Key Information Extraction"
